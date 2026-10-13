@@ -40,7 +40,7 @@ jobs:
         run: ./gradlew :app:tv:assembleLibreDebug
       - name: Rename apk files
         working-directory: ./app/tv/build/outputs/apk/libre/debug/
-        run: rename -- 'tv-libre-' 'findroid-tv-' *.apk
+        run: for f in tv-libre-*.apk; do mv "$f" "findroid-tv-${f#tv-libre-}"; done
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
