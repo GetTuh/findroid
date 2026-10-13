@@ -44,6 +44,7 @@ import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.presentation.film.HomeScreen
 import dev.jdtech.jellyfin.presentation.film.MediaScreen
+import dev.jdtech.jellyfin.presentation.film.SearchScreen
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.ui.components.LoadingIndicator
@@ -186,6 +187,13 @@ private fun MainScreenLayout(
             }
         }
         when (activeTabIndex) {
+            0 -> {
+                SearchScreen(
+                    navigateToMovie = navigateToMovie,
+                    navigateToShow = navigateToShow,
+                    navigateToPlayer = navigateToPlayer,
+                )
+            }
             1 -> {
                 HomeScreen(
                     navigateToMovie = navigateToMovie,

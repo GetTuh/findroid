@@ -1,0 +1,59 @@
+name: TV
+
+on:
+  push:
+    branches:
+      - main
+      - tv
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tv:
+    name: Build TV
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: 17
+          distribution: temurin
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      # A fixed debug keystore keeps the signature stable between builds, so a new build can be
+      # installed over the previous one without uninstalling (and losing the login) first.
+      - name: Restore debug keystore
+        env:
+          TV_DEBUG_KEYSTORE: ${{ secrets.TV_DEBUG_KEYSTORE }}
+        run: |
+          if [ -n "$TV_DEBUG_KEYSTORE" ]; then
+            mkdir -p ~/.android
+            echo "$TV_DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
+          else
+            echo "::warning::TV_DEBUG_KEYSTORE secret not set, builds will not install over each other"
+          fi
+      - name: Build with Gradle
+        run: ./gradlew :app:tv:assembleLibreDebug
+      - name: Rename apk files
+        working-directory: ./app/tv/build/outputs/apk/libre/debug/
+        run: rename -- 'tv-libre-' 'findroid-tv-' *.apk
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: findroid-tv-debug
+          path: ./app/tv/build/outputs/apk/libre/debug/*.apk
+      - name: Update tv-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete tv-latest --cleanup-tag --yes || true
+          gh release create tv-latest \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "TV latest (${GITHUB_SHA::7})" \
+            --notes "Debug build of the Android TV app from ${GITHUB_REF_NAME}@${GITHUB_SHA::7}. Most TVs need the arm64-v8a apk." \
+            ./app/tv/build/outputs/apk/libre/debug/*.apk
