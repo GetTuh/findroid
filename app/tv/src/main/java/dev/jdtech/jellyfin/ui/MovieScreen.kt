@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +48,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovie
+import dev.jdtech.jellyfin.core.presentation.dummy.dummyPerson
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyVideoMetadata
 import dev.jdtech.jellyfin.core.presentation.theme.Yellow
 import dev.jdtech.jellyfin.film.presentation.movie.MovieAction
@@ -52,6 +56,7 @@ import dev.jdtech.jellyfin.film.presentation.movie.MovieState
 import dev.jdtech.jellyfin.film.presentation.movie.MovieViewModel
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.ui.components.CastSection
 import dev.jdtech.jellyfin.utils.format
 import java.util.UUID
 
@@ -59,6 +64,7 @@ import java.util.UUID
 fun MovieScreen(
     movieId: UUID,
     navigateToPlayer: (itemId: UUID) -> Unit,
+    navigateToPerson: (personId: UUID) -> Unit,
     viewModel: MovieViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -72,6 +78,7 @@ fun MovieScreen(
                 is MovieAction.Play -> {
                     navigateToPlayer(movieId)
                 }
+                is MovieAction.NavigateToPerson -> navigateToPerson(action.personId)
                 else -> Unit
             }
             viewModel.onAction(action)
@@ -115,10 +122,12 @@ private fun MovieScreenLayout(state: MovieState, onAction: (MovieAction) -> Unit
                 }
                 Column(
                     modifier =
-                        Modifier.padding(
-                            start = MaterialTheme.spacings.default * 2,
-                            end = MaterialTheme.spacings.default * 2,
-                        )
+                        Modifier.verticalScroll(rememberScrollState())
+                            .padding(
+                                start = MaterialTheme.spacings.default * 2,
+                                end = MaterialTheme.spacings.default * 2,
+                                bottom = MaterialTheme.spacings.large,
+                            )
                 ) {
                     Spacer(modifier = Modifier.height(112.dp))
                     Text(text = movie.name, style = MaterialTheme.typography.displayMedium)
@@ -289,13 +298,14 @@ private fun MovieScreenLayout(state: MovieState, onAction: (MovieAction) -> Unit
                             )
                         }
                     }
-                    //                    Spacer(modifier =
-                    // Modifier.height(MaterialTheme.spacings.large))
-                    //                    Text(
-                    //                        text = stringResource(id =
-                    // CoreR.string.cast_amp_crew),
-                    //                        style = MaterialTheme.typography.headlineMedium,
-                    //                    )
+                    if (state.actors.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacings.large))
+                        CastSection(
+                            actors = state.actors,
+                            itemsPadding = PaddingValues(),
+                            onPersonClick = { onAction(MovieAction.NavigateToPerson(it)) },
+                        )
+                    }
                 }
             }
 
@@ -309,7 +319,12 @@ private fun MovieScreenLayout(state: MovieState, onAction: (MovieAction) -> Unit
 private fun MovieScreenLayoutPreview() {
     FindroidTheme {
         MovieScreenLayout(
-            state = MovieState(movie = dummyMovie, videoMetadata = dummyVideoMetadata),
+            state =
+                MovieState(
+                    movie = dummyMovie,
+                    videoMetadata = dummyVideoMetadata,
+                    actors = listOf(dummyPerson),
+                ),
             onAction = {},
         )
     }

@@ -40,8 +40,6 @@ import dev.jdtech.jellyfin.film.presentation.library.LibraryViewModel
 import dev.jdtech.jellyfin.models.CollectionType
 import dev.jdtech.jellyfin.models.FindroidFolder
 import dev.jdtech.jellyfin.models.FindroidItem
-import dev.jdtech.jellyfin.models.FindroidMovie
-import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.presentation.film.components.SortByDialog
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
@@ -57,8 +55,7 @@ fun LibraryScreen(
     libraryName: String,
     libraryType: CollectionType,
     navigateToLibrary: (libraryId: UUID, libraryName: String, libraryType: CollectionType) -> Unit,
-    navigateToMovie: (itemId: UUID) -> Unit,
-    navigateToShow: (itemId: UUID) -> Unit,
+    onItemClick: (FindroidItem) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -80,10 +77,10 @@ fun LibraryScreen(
             when (action) {
                 is LibraryAction.OnItemClick -> {
                     when (action.item) {
-                        is FindroidMovie -> navigateToMovie(action.item.id)
-                        is FindroidShow -> navigateToShow(action.item.id)
+                        // Sub-folders keep the type of the library they are in
                         is FindroidFolder ->
                             navigateToLibrary(action.item.id, action.item.name, libraryType)
+                        else -> onItemClick(action.item)
                     }
                 }
                 else -> Unit

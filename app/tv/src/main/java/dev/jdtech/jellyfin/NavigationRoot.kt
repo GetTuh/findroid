@@ -10,10 +10,21 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import dev.jdtech.jellyfin.models.CollectionType
+import dev.jdtech.jellyfin.models.FindroidBoxSet
+import dev.jdtech.jellyfin.models.FindroidCollection
+import dev.jdtech.jellyfin.models.FindroidEpisode
+import dev.jdtech.jellyfin.models.FindroidFolder
+import dev.jdtech.jellyfin.models.FindroidItem
+import dev.jdtech.jellyfin.models.FindroidMovie
 import dev.jdtech.jellyfin.models.FindroidSeason
+import dev.jdtech.jellyfin.models.FindroidShow
 import dev.jdtech.jellyfin.navigation.navigateOrReuse
 import dev.jdtech.jellyfin.navigation.resumedAction
+import dev.jdtech.jellyfin.presentation.film.CollectionScreen
+import dev.jdtech.jellyfin.presentation.film.FavoritesScreen
 import dev.jdtech.jellyfin.presentation.film.LibraryScreen
+import dev.jdtech.jellyfin.presentation.film.PersonScreen
 import dev.jdtech.jellyfin.presentation.film.SeasonScreen
 import dev.jdtech.jellyfin.presentation.film.ShowScreen
 import dev.jdtech.jellyfin.presentation.settings.SettingsScreen
@@ -72,6 +83,7 @@ fun NavigationRoot(
         backStack.add(MainRoute)
     }
     val navigateOrReuse: (NavKey) -> Unit = backStack::navigateOrReuse
+    val navigateToItem: (FindroidItem) -> Unit = { item -> itemRoute(item)?.let(navigate) }
 
     NavDisplay(
         backStack = backStack,
@@ -84,6 +96,7 @@ fun NavigationRoot(
                     navigate = navigate,
                     navigateToMain = navigateToMain,
                     navigateOrReuse = navigateOrReuse,
+                    navigateToItem = navigateToItem,
                 )
             },
     )
@@ -100,6 +113,7 @@ private fun EntryProviderScope<NavKey>.tvEntries(
     navigate: (NavKey) -> Unit,
     navigateToMain: () -> Unit,
     navigateOrReuse: (NavKey) -> Unit,
+    navigateToItem: (FindroidItem) -> Unit,
 ) {
     entry<WelcomeRoute> {
         WelcomeScreen(onContinueClick = dropUnlessResumed { navigate(ServersRoute) })
@@ -155,14 +169,8 @@ private fun EntryProviderScope<NavKey>.tvEntries(
                         )
                     )
                 },
-            navigateToMovie = resumedAction { itemId -> navigate(MovieRoute(itemId.toString())) },
-            navigateToShow = resumedAction { itemId -> navigate(ShowRoute(itemId.toString())) },
-            navigateToPlayer =
-                resumedAction { itemId, itemKind ->
-                    navigate(
-                        PlayerRoute(itemId = itemId.toString(), itemKind = itemKind.serialName)
-                    )
-                },
+            navigateToFavorites = dropUnlessResumed { navigate(FavoritesRoute) },
+            onItemClick = resumedAction(navigateToItem),
         )
     }
     entry<LibraryRoute> { key ->
@@ -180,8 +188,21 @@ private fun EntryProviderScope<NavKey>.tvEntries(
                         )
                     )
                 },
-            navigateToMovie = resumedAction { itemId -> navigate(MovieRoute(itemId.toString())) },
-            navigateToShow = resumedAction { itemId -> navigate(ShowRoute(itemId.toString())) },
+            onItemClick = resumedAction(navigateToItem),
+        )
+    }
+    entry<CollectionRoute> { key ->
+        CollectionScreen(
+            collectionId = UUID.fromString(key.collectionId),
+            collectionName = key.collectionName,
+            onItemClick = resumedAction(navigateToItem),
+        )
+    }
+    entry<FavoritesRoute> { FavoritesScreen(onItemClick = resumedAction(navigateToItem)) }
+    entry<PersonRoute> { key ->
+        PersonScreen(
+            personId = UUID.fromString(key.personId),
+            onItemClick = resumedAction(navigateToItem),
         )
     }
     entry<MovieRoute> { key ->
@@ -196,18 +217,14 @@ private fun EntryProviderScope<NavKey>.tvEntries(
                         )
                     )
                 },
+            navigateToPerson =
+                resumedAction { personId -> navigate(PersonRoute(personId.toString())) },
         )
     }
     entry<ShowRoute> { key ->
         ShowScreen(
             showId = UUID.fromString(key.itemId),
-            navigateToItem =
-                resumedAction { item ->
-                    when (item) {
-                        is FindroidSeason -> navigate(SeasonRoute(seasonId = item.id.toString()))
-                        else -> Unit
-                    }
-                },
+            navigateToItem = resumedAction(navigateToItem),
             navigateToPlayer =
                 resumedAction { itemId ->
                     navigate(
@@ -217,6 +234,8 @@ private fun EntryProviderScope<NavKey>.tvEntries(
                         )
                     )
                 },
+            navigateToPerson =
+                resumedAction { personId -> navigate(PersonRoute(personId.toString())) },
         )
     }
     entry<SeasonRoute> { key ->
@@ -258,3 +277,29 @@ private fun EntryProviderScope<NavKey>.tvEntries(
         )
     }
 }
+
+/** The route that opens [item], or null when the TV app has no screen for that kind of item. */
+private fun itemRoute(item: FindroidItem): NavKey? =
+    when (item) {
+        is FindroidBoxSet ->
+            CollectionRoute(collectionId = item.id.toString(), collectionName = item.name)
+        is FindroidMovie -> MovieRoute(itemId = item.id.toString())
+        is FindroidShow -> ShowRoute(itemId = item.id.toString())
+        is FindroidSeason -> SeasonRoute(seasonId = item.id.toString())
+        // There is no episode details screen on TV yet: play the episode directly
+        is FindroidEpisode ->
+            PlayerRoute(itemId = item.id.toString(), itemKind = BaseItemKind.EPISODE.serialName)
+        is FindroidCollection ->
+            LibraryRoute(
+                libraryId = item.id.toString(),
+                libraryName = item.name,
+                libraryType = item.type,
+            )
+        is FindroidFolder ->
+            LibraryRoute(
+                libraryId = item.id.toString(),
+                libraryName = item.name,
+                libraryType = CollectionType.Folders,
+            )
+        else -> null
+    }

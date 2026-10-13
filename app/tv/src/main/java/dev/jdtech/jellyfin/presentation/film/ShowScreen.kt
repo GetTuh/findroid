@@ -66,6 +66,7 @@ import dev.jdtech.jellyfin.film.presentation.show.ShowViewModel
 import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
+import dev.jdtech.jellyfin.ui.components.CastSection
 import dev.jdtech.jellyfin.ui.components.Direction
 import dev.jdtech.jellyfin.ui.components.ItemCard
 import dev.jdtech.jellyfin.utils.getShowDateString
@@ -76,6 +77,7 @@ fun ShowScreen(
     showId: UUID,
     navigateToItem: (item: FindroidItem) -> Unit,
     navigateToPlayer: (itemId: UUID) -> Unit,
+    navigateToPerson: (personId: UUID) -> Unit,
     viewModel: ShowViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -100,6 +102,7 @@ fun ShowScreen(
                     }
                 }
                 is ShowAction.NavigateToItem -> navigateToItem(action.item)
+                is ShowAction.NavigateToPerson -> navigateToPerson(action.personId)
                 else -> Unit
             }
             viewModel.onAction(action)
@@ -114,7 +117,8 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
     val locale = configuration.locales.get(0)
 
     val listState = rememberLazyListState()
-    val listSize = remember { mutableIntStateOf(2) }
+    // Number of rows the D-pad steps through: details, seasons and (when present) cast
+    val listSize = if (state.actors.isNotEmpty()) 3 else 2
     var currentIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(currentIndex) { listState.animateScrollToItem(currentIndex) }
@@ -156,13 +160,11 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                         Modifier.onPreviewKeyEvent { keyEvent ->
                             when (keyEvent.key.nativeKeyCode) {
                                 KeyEvent.KEYCODE_DPAD_DOWN -> {
-                                    currentIndex =
-                                        (++currentIndex).coerceIn(0, listSize.intValue - 1)
+                                    currentIndex = (++currentIndex).coerceIn(0, listSize - 1)
                                 }
 
                                 KeyEvent.KEYCODE_DPAD_UP -> {
-                                    currentIndex =
-                                        (--currentIndex).coerceIn(0, listSize.intValue - 1)
+                                    currentIndex = (--currentIndex).coerceIn(0, listSize - 1)
                                 }
                             }
                             false
@@ -380,6 +382,16 @@ private fun ShowScreenLayout(state: ShowState, onAction: (ShowAction) -> Unit) {
                                     onClick = { onAction(ShowAction.NavigateToItem(season)) },
                                 )
                             }
+                        }
+                    }
+                    if (state.actors.isNotEmpty()) {
+                        item {
+                            CastSection(
+                                actors = state.actors,
+                                itemsPadding =
+                                    PaddingValues(horizontal = MaterialTheme.spacings.default * 2),
+                                onPersonClick = { onAction(ShowAction.NavigateToPerson(it)) },
+                            )
                         }
                     }
                 }

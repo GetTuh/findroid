@@ -41,23 +41,17 @@ import dev.jdtech.jellyfin.core.presentation.dummy.dummyMovies
 import dev.jdtech.jellyfin.film.presentation.search.SearchAction
 import dev.jdtech.jellyfin.film.presentation.search.SearchState
 import dev.jdtech.jellyfin.film.presentation.search.SearchViewModel
-import dev.jdtech.jellyfin.models.FindroidEpisode
-import dev.jdtech.jellyfin.models.FindroidMovie
-import dev.jdtech.jellyfin.models.FindroidShow
+import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.presentation.theme.FindroidTheme
 import dev.jdtech.jellyfin.presentation.theme.spacings
 import dev.jdtech.jellyfin.ui.components.Direction
 import dev.jdtech.jellyfin.ui.components.ItemCard
 import dev.jdtech.jellyfin.ui.components.LoadingIndicator
-import java.util.UUID
 import kotlinx.coroutines.delay
-import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
 fun SearchScreen(
-    navigateToMovie: (itemId: UUID) -> Unit,
-    navigateToShow: (itemId: UUID) -> Unit,
-    navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
+    onItemClick: (FindroidItem) -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -66,13 +60,7 @@ fun SearchScreen(
         state = state,
         onAction = { action ->
             when (action) {
-                is SearchAction.OnItemClick -> {
-                    when (action.item) {
-                        is FindroidMovie -> navigateToMovie(action.item.id)
-                        is FindroidShow -> navigateToShow(action.item.id)
-                        is FindroidEpisode -> navigateToPlayer(action.item.id, BaseItemKind.EPISODE)
-                    }
-                }
+                is SearchAction.OnItemClick -> onItemClick(action.item)
                 else -> Unit
             }
             viewModel.onAction(action)

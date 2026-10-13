@@ -41,6 +41,7 @@ import dev.jdtech.jellyfin.core.R as CoreR
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyServer
 import dev.jdtech.jellyfin.core.presentation.dummy.dummyUser
 import dev.jdtech.jellyfin.models.CollectionType
+import dev.jdtech.jellyfin.models.FindroidItem
 import dev.jdtech.jellyfin.models.User
 import dev.jdtech.jellyfin.presentation.film.HomeScreen
 import dev.jdtech.jellyfin.presentation.film.MediaScreen
@@ -52,15 +53,13 @@ import dev.jdtech.jellyfin.ui.components.PillBorderIndicator
 import dev.jdtech.jellyfin.ui.components.ProfileButton
 import dev.jdtech.jellyfin.viewmodels.MainViewModel
 import java.util.UUID
-import org.jellyfin.sdk.model.api.BaseItemKind
 
 @Composable
 fun MainScreen(
     navigateToSettings: () -> Unit,
     navigateToLibrary: (libraryId: UUID, libraryName: String, libraryType: CollectionType) -> Unit,
-    navigateToMovie: (itemId: UUID) -> Unit,
-    navigateToShow: (itemId: UUID) -> Unit,
-    navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
+    navigateToFavorites: () -> Unit,
+    onItemClick: (FindroidItem) -> Unit,
     mainViewModel: MainViewModel = hiltViewModel(),
 ) {
     val delegatedUiState by mainViewModel.uiState.collectAsState()
@@ -71,9 +70,8 @@ fun MainScreen(
         uiState = delegatedUiState,
         navigateToSettings = navigateToSettings,
         navigateToLibrary = navigateToLibrary,
-        navigateToMovie = navigateToMovie,
-        navigateToShow = navigateToShow,
-        navigateToPlayer = navigateToPlayer,
+        navigateToFavorites = navigateToFavorites,
+        onItemClick = onItemClick,
     )
 }
 
@@ -89,9 +87,8 @@ private fun MainScreenLayout(
     uiState: MainViewModel.UiState,
     navigateToSettings: () -> Unit,
     navigateToLibrary: (libraryId: UUID, libraryName: String, libraryType: CollectionType) -> Unit,
-    navigateToMovie: (itemId: UUID) -> Unit,
-    navigateToShow: (itemId: UUID) -> Unit,
-    navigateToPlayer: (itemId: UUID, itemKind: BaseItemKind) -> Unit,
+    navigateToFavorites: () -> Unit,
+    onItemClick: (FindroidItem) -> Unit,
 ) {
     var focusedTabIndex by rememberSaveable { mutableIntStateOf(1) }
     var activeTabIndex by rememberSaveable { mutableIntStateOf(focusedTabIndex) }
@@ -188,22 +185,17 @@ private fun MainScreenLayout(
         }
         when (activeTabIndex) {
             0 -> {
-                SearchScreen(
-                    navigateToMovie = navigateToMovie,
-                    navigateToShow = navigateToShow,
-                    navigateToPlayer = navigateToPlayer,
-                )
+                SearchScreen(onItemClick = onItemClick)
             }
             1 -> {
-                HomeScreen(
-                    navigateToMovie = navigateToMovie,
-                    navigateToShow = navigateToShow,
-                    navigateToPlayer = navigateToPlayer,
-                    isLoading = { isLoading = it },
-                )
+                HomeScreen(onItemClick = onItemClick, isLoading = { isLoading = it })
             }
             2 -> {
-                MediaScreen(navigateToLibrary = navigateToLibrary, isLoading = { isLoading = it })
+                MediaScreen(
+                    navigateToLibrary = navigateToLibrary,
+                    navigateToFavorites = navigateToFavorites,
+                    isLoading = { isLoading = it },
+                )
             }
         }
     }
@@ -217,9 +209,8 @@ private fun MainScreenLayoutPreview() {
             uiState = MainViewModel.UiState.Normal(server = dummyServer, user = dummyUser),
             navigateToSettings = {},
             navigateToLibrary = { _, _, _ -> },
-            navigateToMovie = {},
-            navigateToShow = {},
-            navigateToPlayer = { _, _ -> },
+            navigateToFavorites = {},
+            onItemClick = {},
         )
     }
 }
